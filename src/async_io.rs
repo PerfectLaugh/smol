@@ -240,7 +240,7 @@ impl AsyncRead for Async<TcpStream> {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
-        Pin::new(self.io.as_mut().unwrap()).poll_read(cx, buf)
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_read(cx, buf)
     }
 
     fn poll_read_vectored(
@@ -248,7 +248,25 @@ impl AsyncRead for Async<TcpStream> {
         cx: &mut Context<'_>,
         bufs: &mut [IoSliceMut<'_>],
     ) -> Poll<io::Result<usize>> {
-        Pin::new(self.io.as_mut().unwrap()).poll_read_vectored(cx, bufs)
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_read_vectored(cx, bufs)
+    }
+}
+
+impl AsyncRead for &Async<TcpStream> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<io::Result<usize>> {
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_read(cx, buf)
+    }
+
+    fn poll_read_vectored(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        bufs: &mut [IoSliceMut<'_>],
+    ) -> Poll<io::Result<usize>> {
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_read_vectored(cx, bufs)
     }
 }
 
@@ -258,7 +276,7 @@ impl AsyncWrite for Async<TcpStream> {
         cx: &mut Context<'_>,
         buf: &[u8],
     ) -> Poll<io::Result<usize>> {
-        Pin::new(self.io.as_mut().unwrap()).poll_write(cx, buf)
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_write(cx, buf)
     }
 
     fn poll_write_vectored(
@@ -266,15 +284,41 @@ impl AsyncWrite for Async<TcpStream> {
         cx: &mut Context<'_>,
         bufs: &[IoSlice<'_>],
     ) -> Poll<io::Result<usize>> {
-        Pin::new(self.io.as_mut().unwrap()).poll_write_vectored(cx, bufs)
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_write_vectored(cx, bufs)
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        Pin::new(self.io.as_mut().unwrap()).poll_flush(cx)
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_flush(cx)
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        Pin::new(self.io.as_mut().unwrap()).poll_close(cx)
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_close(cx)
+    }
+}
+
+impl AsyncWrite for &Async<TcpStream> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_write(cx, buf)
+    }
+
+    fn poll_write_vectored(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        bufs: &[IoSlice<'_>],
+    ) -> Poll<io::Result<usize>> {
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_write_vectored(cx, bufs)
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_flush(cx)
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_close(cx)
     }
 }
 
@@ -829,7 +873,7 @@ impl AsyncRead for Async<UnixStream> {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
-        Pin::new(self.io.as_mut().unwrap()).poll_read(cx, buf)
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_read(cx, buf)
     }
 
     fn poll_read_vectored(
@@ -837,7 +881,7 @@ impl AsyncRead for Async<UnixStream> {
         cx: &mut Context<'_>,
         bufs: &mut [IoSliceMut<'_>],
     ) -> Poll<io::Result<usize>> {
-        Pin::new(self.io.as_mut().unwrap()).poll_read_vectored(cx, bufs)
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_read_vectored(cx, bufs)
     }
 }
 
@@ -848,7 +892,7 @@ impl AsyncWrite for Async<UnixStream> {
         cx: &mut Context<'_>,
         buf: &[u8],
     ) -> Poll<io::Result<usize>> {
-        Pin::new(self.io.as_mut().unwrap()).poll_write(cx, buf)
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_write(cx, buf)
     }
 
     fn poll_write_vectored(
@@ -856,14 +900,60 @@ impl AsyncWrite for Async<UnixStream> {
         cx: &mut Context<'_>,
         bufs: &[IoSlice<'_>],
     ) -> Poll<io::Result<usize>> {
-        Pin::new(self.io.as_mut().unwrap()).poll_write_vectored(cx, bufs)
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_write_vectored(cx, bufs)
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        Pin::new(self.io.as_mut().unwrap()).poll_flush(cx)
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_flush(cx)
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        Pin::new(self.io.as_mut().unwrap()).poll_close(cx)
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_close(cx)
+    }
+}
+
+#[cfg(unix)]
+impl AsyncRead for &Async<UnixStream> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<io::Result<usize>> {
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_read(cx, buf)
+    }
+
+    fn poll_read_vectored(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        bufs: &mut [IoSliceMut<'_>],
+    ) -> Poll<io::Result<usize>> {
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_read_vectored(cx, bufs)
+    }
+}
+
+#[cfg(unix)]
+impl AsyncWrite for &Async<UnixStream> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_write(cx, buf)
+    }
+
+    fn poll_write_vectored(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        bufs: &[IoSlice<'_>],
+    ) -> Poll<io::Result<usize>> {
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_write_vectored(cx, bufs)
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_flush(cx)
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.io.as_ref().unwrap()).poll_close(cx)
     }
 }
