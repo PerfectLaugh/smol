@@ -29,8 +29,8 @@ use std::task::{Context, Poll};
 use std::thread;
 use std::time::Duration;
 
-use futures_util::io::{AllowStdIo, AsyncRead, AsyncWrite, AsyncWriteExt};
-use futures_util::stream::Stream;
+use futures::io::{AllowStdIo, AsyncRead, AsyncWrite, AsyncWriteExt};
+use futures::stream::Stream;
 use once_cell::sync::Lazy;
 
 use crate::context;
@@ -236,7 +236,7 @@ pub fn iter<T: Send + 'static>(
 
         fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<T>> {
             // Throttle if the current task has done too many I/O operations without yielding.
-            futures_util::ready!(throttle::poll(cx));
+            futures::ready!(throttle::poll(cx));
 
             match &mut *self {
                 State::Idle(iter) => {
@@ -262,14 +262,14 @@ pub fn iter<T: Send + 'static>(
                 }
                 State::Busy(receiver, task) => {
                     // Poll the channel.
-                    let opt = futures_util::ready!(Pin::new(receiver).poll_next(cx));
+                    let opt = futures::ready!(Pin::new(receiver).poll_next(cx));
 
                     // If the channel is closed, retrieve the iterator back from the blocking task.
                     // This is not really a required step, but it's cleaner to drop the iterator on
                     // the same thread that created it.
                     if opt.is_none() {
                         // Poll the task to retrieve the iterator.
-                        let iter = futures_util::ready!(Pin::new(task).poll(cx));
+                        let iter = futures::ready!(Pin::new(task).poll(cx));
                         *self = State::Idle(Some(iter));
                     }
 
@@ -340,7 +340,7 @@ pub fn reader(reader: impl Read + Send + 'static) -> impl AsyncRead + Send + Unp
             buf: &mut [u8],
         ) -> Poll<io::Result<usize>> {
             // Throttle if the current task has done too many I/O operations without yielding.
-            futures_util::ready!(throttle::poll(cx));
+            futures::ready!(throttle::poll(cx));
 
             match &mut *self {
                 State::Idle(io) => {
@@ -356,7 +356,7 @@ pub fn reader(reader: impl Read + Send + 'static) -> impl AsyncRead + Send + Unp
                     let task = Task::blocking(async move {
                         // Copy bytes from the I/O handle into the pipe until the pipe is closed or
                         // an error occurs.
-                        let res = futures_util::io::copy(&mut io, &mut writer).await;
+                        let res = futures::io::copy(&mut io, &mut writer).await;
                         (res.map(drop), io)
                     });
 
@@ -366,14 +366,14 @@ pub fn reader(reader: impl Read + Send + 'static) -> impl AsyncRead + Send + Unp
                 }
                 State::Busy(reader, task) => {
                     // Poll the pipe.
-                    let n = futures_util::ready!(Pin::new(reader).poll_read(cx, buf))?;
+                    let n = futures::ready!(Pin::new(reader).poll_read(cx, buf))?;
 
                     // If the pipe is closed, retrieve the I/O handle back from the blocking task.
                     // This is not really a required step, but it's cleaner to drop the handle on
                     // the same thread that created it.
                     if n == 0 {
                         // Poll the task to retrieve the I/O handle.
-                        let (res, io) = futures_util::ready!(Pin::new(task).poll(cx));
+                        let (res, io) = futures::ready!(Pin::new(task).poll(cx));
                         // Make sure to move into the idle state before reporting errors.
                         *self = State::Idle(Some(io));
                         res?;
@@ -458,7 +458,7 @@ pub fn writer(writer: impl Write + Send + 'static) -> impl AsyncWrite + Send + U
                 let task = Task::blocking(async move {
                     // Copy bytes from the pipe into the I/O handle until the pipe is closed or an
                     // error occurs. Flush the I/O handle at the end.
-                    match futures_util::io::copy(reader, &mut io).await {
+                    match futures::io::copy(reader, &mut io).await {
                         Ok(_) => (io.flush().await, io),
                         Err(err) => (Err(err), io),
                     }
@@ -476,7 +476,7 @@ pub fn writer(writer: impl Write + Send + 'static) -> impl AsyncWrite + Send + U
             buf: &[u8],
         ) -> Poll<io::Result<usize>> {
             // Throttle if the current task has done too many I/O operations without yielding.
-            futures_util::ready!(throttle::poll(cx));
+            futures::ready!(throttle::poll(cx));
 
             loop {
                 match &mut *self {
@@ -489,7 +489,7 @@ pub fn writer(writer: impl Write + Send + 'static) -> impl AsyncWrite + Send + U
                     // The task is flushing and in process of stopping.
                     State::Busy(None, task) => {
                         // Poll the task to retrieve the I/O handle.
-                        let (res, io) = futures_util::ready!(Pin::new(task).poll(cx));
+                        let (res, io) = futures::ready!(Pin::new(task).poll(cx));
                         // Make sure to move into the idle state before reporting errors.
                         *self = State::Idle(Some(io));
                         res?;
@@ -503,7 +503,7 @@ pub fn writer(writer: impl Write + Send + 'static) -> impl AsyncWrite + Send + U
 
         fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
             // Throttle if the current task has done too many I/O operations without yielding.
-            futures_util::ready!(throttle::poll(cx));
+            futures::ready!(throttle::poll(cx));
 
             loop {
                 match &mut *self {
@@ -515,13 +515,13 @@ pub fn writer(writer: impl Write + Send + 'static) -> impl AsyncWrite + Send + U
 
                     // The task is busy.
                     State::Busy(writer, task) => {
-                        // Drop the writer to close the pipe. This stops the `futures_util::io::copy`
+                        // Drop the writer to close the pipe. This stops the `futures::io::copy`
                         // operation in the task, after which the task flushes the I/O handle and
                         // returns it back.
                         writer.take();
 
                         // Poll the task to retrieve the I/O handle.
-                        let (res, io) = futures_util::ready!(Pin::new(task).poll(cx));
+                        let (res, io) = futures::ready!(Pin::new(task).poll(cx));
                         // Make sure to move into the idle state before reporting errors.
                         *self = State::Idle(Some(io));
                         return Poll::Ready(res);
@@ -532,7 +532,7 @@ pub fn writer(writer: impl Write + Send + 'static) -> impl AsyncWrite + Send + U
 
         fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
             // First, make sure the I/O handle is flushed.
-            futures_util::ready!(Pin::new(&mut *self).poll_flush(cx))?;
+            futures::ready!(Pin::new(&mut *self).poll_flush(cx))?;
 
             // Then move into the idle state with no I/O handle, thus dropping it.
             *self = State::Idle(None);

@@ -19,7 +19,7 @@ Aliquam consequat urna vitae ipsum pulvinar, in blandit purus eleifend.
 #[test]
 fn tcp_connection() -> io::Result<()> {
     smol::run(async {
-        let listener = Async::<TcpListener>::bind("127.0.0.1:8080")?;
+        let listener = Async::<TcpListener>::bind("127.0.0.1:0")?;
         let addr = listener.get_ref().local_addr()?;
         let task = Task::spawn(async move { listener.accept().await });
 
@@ -45,9 +45,9 @@ fn tcp_connection() -> io::Result<()> {
 #[test]
 fn tcp_peek_read() -> io::Result<()> {
     smol::run(async {
-        let listener = Async::<TcpListener>::bind("127.0.0.1:8081")?;
+        let listener = Async::<TcpListener>::bind("127.0.0.1:0")?;
 
-        let mut stream = Async::<TcpStream>::connect("127.0.0.1:8081").await?;
+        let mut stream = Async::<TcpStream>::connect(listener.get_ref().local_addr()?).await?;
         stream.write_all(LOREM_IPSUM).await?;
 
         let mut buf = [0; 1024];
@@ -66,8 +66,8 @@ fn tcp_peek_read() -> io::Result<()> {
 #[test]
 fn udp_send_recv() -> io::Result<()> {
     smol::run(async {
-        let socket1 = Async::<UdpSocket>::bind("127.0.0.1:8000")?;
-        let socket2 = Async::<UdpSocket>::bind("127.0.0.1:9000")?;
+        let socket1 = Async::<UdpSocket>::bind("127.0.0.1:0")?;
+        let socket2 = Async::<UdpSocket>::bind("127.0.0.1:0")?;
         socket1.get_ref().connect(socket2.get_ref().local_addr()?)?;
 
         let mut buf = [0u8; 1024];

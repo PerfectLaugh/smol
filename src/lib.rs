@@ -56,7 +56,7 @@
 //!         stream.write_all(req).await?;
 //!
 //!         let mut stdout = smol::writer(std::io::stdout());
-//!         futures::io::copy(&stream, &mut stdout).await?;
+//!         futures::io::copy(&mut stream, &mut stdout).await?;
 //!         Ok(())
 //!     })
 //! }
