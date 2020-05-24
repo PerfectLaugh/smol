@@ -219,11 +219,15 @@ impl ReactorLock<'_> {
             // The timeout was hit so fire ready timers.
             Ok(0) => {
                 self.reactor.fire_timers();
+                println!("SIZE: 0");
                 Ok(())
             }
 
             // At least one I/O event occured.
-            Ok(_) => Ok(()),
+            Ok(size) => {
+                println!("SIZE: {}", size);
+                Ok(())
+            }
 
             // An actual error occureed.
             Err(err) => Err(err),
