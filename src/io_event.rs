@@ -12,6 +12,8 @@ use std::sync::Arc;
 use futures::channel::mpsc;
 use futures::StreamExt;
 
+use crate::reactor::Reactor;
+
 /// A self-pipe.
 struct Inner {
     /// Set to `true` if notified.
@@ -52,6 +54,9 @@ impl IoEvent {
                 // Trigger an I/O event and ignore the error.
                 let mut writer = self.0.writer.lock();
                 let _ = writer.try_send(());
+
+                // Wake the reactor.
+                Reactor::get().wake();
             }
         }
     }

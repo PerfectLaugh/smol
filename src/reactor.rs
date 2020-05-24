@@ -75,6 +75,15 @@ impl Reactor {
         &REACTOR
     }
 
+    /// Wake the system proactor.
+    pub fn wake(&self) {
+        // Test the lock and wake it if locking (means someone holding the proactor).
+        if let Some(_) = self.try_lock() {
+            return;
+        }
+        let _ = self.sys.wake();
+    }
+
     /// Registers a timer in the reactor.
     ///
     /// Returns the inserted timer's ID.
