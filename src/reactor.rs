@@ -215,20 +215,15 @@ impl ReactorLock<'_> {
         };
 
         // Block on I/O events.
-        println!("POLL WAITING: {:?}", timeout);;
         match self.reactor.sys.wait(8, timeout) {
             // The timeout was hit so fire ready timers.
             Ok(0) => {
                 self.reactor.fire_timers();
-                println!("SIZE: 0");
                 Ok(())
             }
 
             // At least one I/O event occured.
-            Ok(size) => {
-                println!("SIZE: {}", size);
-                Ok(())
-            }
+            Ok(_) => Ok(()),
 
             // An actual error occureed.
             Err(err) => Err(err),
