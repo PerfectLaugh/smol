@@ -215,7 +215,7 @@ impl ReactorLock<'_> {
         };
 
         // Block on I/O events.
-        println!("POLL WAITING");
+        println!("POLL WAITING: {:?}", timeout);;
         match self.reactor.sys.wait(8, timeout) {
             // The timeout was hit so fire ready timers.
             Ok(0) => {
