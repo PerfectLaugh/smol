@@ -33,6 +33,26 @@ use nio::Initiator;
 ///
 /// # Examples
 ///
+/// To make an async I/O handle cloneable, wrap it in [piper]'s `Arc`:
+///
+/// ```no_run
+/// use piper::Arc;
+/// use smol::Async;
+/// use std::net::TcpStream;
+///
+/// # smol::run(async {
+/// // Connect to a local server.
+/// let stream = Async::<TcpStream>::connect("127.0.0.1:8000").await?;
+///
+/// // Create two handles to the stream.
+/// let reader = Arc::new(stream);
+/// let mut writer = reader.clone();
+///
+/// // Echo all messages from the read side of the stream into the write side.
+/// futures::io::copy(reader, &mut writer).await?;
+/// # std::io::Result::Ok(()) });
+/// ```
+///
 /// If a type does but its reference doesn't implement [`AsyncRead`] and [`AsyncWrite`], wrap it in
 /// [piper]'s `Mutex`:
 ///

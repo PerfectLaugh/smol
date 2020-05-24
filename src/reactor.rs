@@ -75,11 +75,6 @@ impl Reactor {
         &REACTOR
     }
 
-    /// Wake the system proactor.
-    pub fn wake(&self) {
-        let _ = self.sys.wake();
-    }
-
     /// Registers a timer in the reactor.
     ///
     /// Returns the inserted timer's ID.
