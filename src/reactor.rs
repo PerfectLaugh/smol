@@ -78,7 +78,7 @@ impl Reactor {
     /// Wake the system proactor.
     pub fn wake(&self) {
         // Test the lock and wake it if locking (means someone holding the proactor).
-        if let Some(_) = self.try_lock() {
+        if self.try_lock().is_some() {
             return;
         }
         let _ = self.sys.wake();

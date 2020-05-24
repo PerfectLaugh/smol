@@ -9,7 +9,9 @@ use std::io;
 use std::sync::atomic::{self, AtomicBool, Ordering};
 use std::sync::Arc;
 
-use std::task::Poll;
+use std::task::{Poll, Waker};
+
+use piper::Lock;
 
 use crate::reactor::Reactor;
 
@@ -17,6 +19,9 @@ use crate::reactor::Reactor;
 struct Inner {
     /// Set to `true` if notified.
     flag: AtomicBool,
+
+    /// Task to wake
+    task: Lock<Option<Waker>>,
 }
 
 /// A flag that that triggers an I/O event whenever it is set.
@@ -28,6 +33,7 @@ impl IoEvent {
     pub fn new() -> io::Result<IoEvent> {
         Ok(IoEvent(Arc::new(Inner {
             flag: AtomicBool::new(false),
+            task: Lock::new(None),
         })))
     }
 
@@ -40,8 +46,14 @@ impl IoEvent {
         if !self.0.flag.load(Ordering::SeqCst) {
             // If this thread sets it...
             if !self.0.flag.swap(true, Ordering::SeqCst) {
-                // Wake the reactor.
-                Reactor::get().wake();
+                if let Some(mut task) = self.0.task.try_lock() {
+                    if let Some(waker) = task.take() {
+                        // Wake the task.
+                        waker.wake();
+                        // Wake the reactor.
+                        Reactor::get().wake();
+                    }
+                }
             }
         }
     }
@@ -59,8 +71,16 @@ impl IoEvent {
     ///
     /// You should assume notifications may spuriously occur.
     pub async fn notified(&self) {
-        futures::future::poll_fn(|_cx| {
+        futures::future::poll_fn(|cx| {
             if !self.0.flag.load(Ordering::SeqCst) {
+                let lock = self.0.task.try_lock();
+                if let Some(mut task) = lock {
+                    // Place task if no task is stored.
+                    if task.is_none() {
+                        task.replace(cx.waker().clone());
+                    }
+                }
+
                 Poll::Pending
             } else {
                 Poll::Ready(())
