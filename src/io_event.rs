@@ -9,8 +9,7 @@ use std::io;
 use std::sync::atomic::{self, AtomicBool, Ordering};
 use std::sync::Arc;
 
-use futures::channel::mpsc;
-use futures::StreamExt;
+use std::task::Poll;
 
 use crate::reactor::Reactor;
 
@@ -18,12 +17,6 @@ use crate::reactor::Reactor;
 struct Inner {
     /// Set to `true` if notified.
     flag: AtomicBool,
-
-    /// The writer side.
-    writer: piper::Mutex<mpsc::Sender<()>>,
-
-    /// The reader side, filled by `notify()`.
-    reader: piper::Mutex<mpsc::Receiver<()>>,
 }
 
 /// A flag that that triggers an I/O event whenever it is set.
@@ -33,12 +26,8 @@ pub(crate) struct IoEvent(Arc<Inner>);
 impl IoEvent {
     /// Creates a new `IoEvent`.
     pub fn new() -> io::Result<IoEvent> {
-        let (writer, reader) = mpsc::channel(1);
-
         Ok(IoEvent(Arc::new(Inner {
             flag: AtomicBool::new(false),
-            writer: piper::Mutex::new(writer),
-            reader: piper::Mutex::new(reader),
         })))
     }
 
@@ -51,10 +40,6 @@ impl IoEvent {
         if !self.0.flag.load(Ordering::SeqCst) {
             // If this thread sets it...
             if !self.0.flag.swap(true, Ordering::SeqCst) {
-                // Trigger an I/O event and ignore the error.
-                let mut writer = self.0.writer.lock();
-                let _ = writer.try_send(());
-
                 // Wake the reactor.
                 Reactor::get().wake();
             }
@@ -74,7 +59,15 @@ impl IoEvent {
     ///
     /// You should assume notifications may spuriously occur.
     pub async fn notified(&self) {
-        let mut reader = self.0.reader.lock();
-        reader.next().await;
+        futures::future::poll_fn(|cx| {
+            if !self.0.flag.load(Ordering::SeqCst) {
+                // Wake to monitor change.
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            } else {
+                Poll::Ready(())
+            }
+        })
+        .await
     }
 }
