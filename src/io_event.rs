@@ -73,15 +73,16 @@ impl IoEvent {
     pub async fn notified(&self) {
         futures::future::poll_fn(|cx| {
             if !self.0.flag.load(Ordering::SeqCst) {
-                let lock = self.0.task.try_lock();
-                if let Some(mut task) = lock {
-                    // Place task if no task is stored.
-                    if task.is_none() {
-                        task.replace(cx.waker().clone());
+                match self.0.task.try_lock() {
+                    Some(mut task) => {
+                        // Place task if no task is stored.
+                        if task.is_none() {
+                            task.replace(cx.waker().clone());
+                        }
+                        Poll::Pending
                     }
+                    None => Poll::Ready(()),
                 }
-
-                Poll::Pending
             } else {
                 Poll::Ready(())
             }
