@@ -103,7 +103,7 @@ impl Reactor {
         }
 
         // Notify that a timer was added.
-        self.timer_event.notify();
+        self.timer_event.notify(false);
 
         id
     }

@@ -90,7 +90,7 @@ impl ThreadLocalExecutor {
                 // Trigger an I/O event to let the original thread know that a task has been
                 // scheduled. If that thread is inside epoll/kqueue/wepoll, an I/O event will wake
                 // it up.
-                event.notify();
+                event.notify(true);
             };
 
             // Create a task, push it into the queue by scheduling it, and return its `Task` handle.

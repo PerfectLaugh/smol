@@ -38,7 +38,7 @@ impl IoEvent {
     }
 
     /// Sets the flag to `true`.
-    pub fn notify(&self) {
+    pub fn notify(&self, wake_reactor: bool) {
         // Publish all in-memory changes before setting the flag.
         atomic::fence(Ordering::SeqCst);
 
@@ -50,8 +50,10 @@ impl IoEvent {
                     if let Some(waker) = task.take() {
                         // Wake the task.
                         waker.wake();
-                        // Wake the reactor.
-                        Reactor::get().wake();
+                        if wake_reactor {
+                            // Wake the reactor.
+                            Reactor::get().wake();
+                        }
                     }
                 }
             }

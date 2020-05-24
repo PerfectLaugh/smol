@@ -103,7 +103,7 @@ pub fn run<T>(future: impl Future<Output = T>) -> T {
 
     // Create a waker that triggers an I/O event in the thread-local scheduler.
     let ev = local.event().clone();
-    let waker = async_task::waker_fn(move || ev.notify());
+    let waker = async_task::waker_fn(move || ev.notify(true));
     let cx = &mut Context::from_waker(&waker);
     futures::pin_mut!(future);
 
