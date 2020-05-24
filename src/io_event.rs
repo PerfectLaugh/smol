@@ -59,10 +59,8 @@ impl IoEvent {
     ///
     /// You should assume notifications may spuriously occur.
     pub async fn notified(&self) {
-        futures::future::poll_fn(|cx| {
+        futures::future::poll_fn(|_cx| {
             if !self.0.flag.load(Ordering::SeqCst) {
-                // Wake to monitor change.
-                cx.waker().wake_by_ref();
                 Poll::Pending
             } else {
                 Poll::Ready(())
