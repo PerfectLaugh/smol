@@ -89,7 +89,7 @@ impl WorkStealingExecutor {
                 self.injector.push(runnable);
 
                 // Notify workers that there is a task in the injector queue.
-                self.event.notify(false);
+                self.event.notify(true);
             }
         };
 
@@ -170,7 +170,7 @@ impl Worker<'_> {
                         // need to worry about `search()` re-shuffling tasks between queues, which
                         // races with other workers searching for tasks. Other workers might not
                         // find a task while there is one! Notifying here avoids this problem.
-                        self.executor.event.notify(false);
+                        self.executor.event.notify(true);
 
                         // Run the task.
                         if throttle::setup(|| r.run()) {
@@ -282,7 +282,7 @@ impl Drop for Worker<'_> {
 
         // This task will not search for tasks anymore and therefore won't notify other workers if
         // new tasks are found. Notify another worker to start searching right away.
-        self.executor.event.notify(false);
+        self.executor.event.notify(true);
     }
 }
 
